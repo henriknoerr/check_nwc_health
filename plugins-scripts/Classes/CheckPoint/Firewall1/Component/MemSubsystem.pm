@@ -6,8 +6,11 @@ sub init {
   my $self = shift;
   $self->get_snmp_objects('CHECKPOINT-MIB', (qw(
       memTotalReal64 memFreeReal64)));
-  $self->{memory_usage} = $self->{memFreeReal64} ? 
+  $self->{memory_usage} = $self->{memFreeReal64} ?
       ( ($self->{memTotalReal64} - $self->{memFreeReal64}) / $self->{memTotalReal64} * 100) : 100;
+  $self->get_snmp_objects('UCD-SNMP-MIB', (qw(
+      memTotalSwap memAvailSwap)));
+  $self->{swap_usage} = ($self->{memTotalSwap} - $self->{memAvailSwap}) / $self->{memTotalSwap} * 100;
 }
 
 sub check {
@@ -20,5 +23,12 @@ sub check {
       value => $self->{memory_usage},
       uom => '%',
   );
+  $self->add_info(sprintf 'swap usage is %.2f%%', $self->{swap_usage});
+  $self->set_thresholds(warning => 30, critical => 75);
+  $self->add_message($self->check_thresholds($self->{swap_usage}));
+  $self->add_perfdata(
+      label => 'swap_usage',
+      value => $self->{swap_usage},
+      uom => '%',
+  );
 }
-
